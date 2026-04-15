@@ -5,9 +5,12 @@
         <!-- Posted by Ramesh Ponnada -->
         <!-- Retrieved 2026-04-15, License - CC BY-SA 3.0 -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script> <!-- Maybe download the  papa parse (like on stack overflow)-->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script> <!-- https://www.chartjs.org/docs/latest/getting-started/installation.html (link incase I change to using npm to download)-->
     </head>
     <body>
         <h1>"Spyware Dashboard - Test"</h1>
+        <canvas id="numOfActivities"></canvas>
+        <canvas id="timeline"></canvas>
         <script>
             Papa.parse("data/sample.csv", {
                 download: true,
@@ -21,7 +24,26 @@
         
 
             function buildCharts(data){
-                
+                const activityCount = {};
+                data.forEach(row => {
+                    activityCount[row.label] = (activityCount[row.label] || 0) + 1;
+                });
+
+                const labels = Object.keys(activityCount).filter(label => label != "undefined");
+                const values = Object.values(activityCount);
+
+                const activityFreq = document.getElementById("numOfActivities").getContext("2d");
+                new Chart(activityFreq, {
+                    type:"bar",
+                    data:{
+                        labels: labels,
+                        datasets: [{
+                            label: "Activity Count",
+                            data: values
+                        }]
+                    }
+                })
+
             }
         </script>
     </body>
