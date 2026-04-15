@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Source - https://stackoverflow.com/a/34529962 -->
+        <!-- Posted by Ramesh Ponnada -->
+        <!-- Retrieved 2026-04-15, License - CC BY-SA 3.0 -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script> <!-- Maybe download the  papa parse (like on stack overflow)-->
+    </head>
+    <body>
+        <h1>"Spyware Dashboard - Test"</h1>
+        <script>
+            Papa.parse("data/sample.csv", {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                complete: ({data}) => {
+                    console.log(data);
+                    buildCharts(data);
+                }
+            })
+        
+
+            function buildCharts(data){
+                
+            }
+        </script>
+    </body>
+</html>
