@@ -37,8 +37,10 @@
                 <div class="feed" id = "feed"></div>
             </div>
             <div style="width: 1400px; flex-shrink:0;">
-                <canvas id="numOfActivitiesBar"></canvas>
-                <canvas id="numOfActivitiesPie" width="1000" height="1000"></canvas>
+                <div style="display: flex; gap: 24px; align-items: flex-start;"> 
+                    <div style="flex: 1;"><canvas id="numOfActivitiesBar"></canvas></div>
+                    <div style="flex: 1;"><canvas id="numOfActivitiesPie"></canvas></div>
+            </div>
                 <canvas id="packetCount"></canvas>
 
             </div>
@@ -115,6 +117,15 @@
                 const activityPie = document.getElementById("numOfActivitiesPie").getContext("2d");
                 new Chart(activityBar, {
                     type:"bar",
+                    options:{
+                        plugins:{
+                            title: {
+                                display:true,
+                                text: "Bar graph showing the number of each events",
+                                font: {size: 20}
+                            }
+                        }
+                    },
                     data:{
                         labels: labels,
                         datasets: [{
@@ -126,7 +137,13 @@
                 new Chart(activityPie, {
                     type:"pie",
                     options:{
-                        responsive:false
+                        plugins:{
+                            title: {
+                                display:true,
+                                text: "Pie Chart showing the number of each events",
+                                font: {size: 20}
+                            }
+                        }
                     },
                     data:{
                         labels: labels,
@@ -137,7 +154,7 @@
                     }
                 })
 
-                
+
 
                 const sorted = [...data].sort((a,b) => a.windowStart - b.windowStart);
                 const lineLabels = sorted.map(row => new Date(row.windowStart * 1000).toLocaleString());
@@ -150,6 +167,13 @@
                         scales: {
                             x: {ticks: {maxTicksLimit: 6}},
                             y: {type: 'logarithmic'}
+                        },
+                        plugins:{
+                            title: {
+                                display:true,
+                                text: "Line Graph showing packet count over time",
+                                font: {size: 20}
+                            }
                         }
                     },
                     data:{
