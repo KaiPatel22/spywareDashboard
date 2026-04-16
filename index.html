@@ -11,26 +11,13 @@
         <style>
             h1 {font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size:50px; text-align: center; font-weight: 600; color: #1d1d1f;}
 
-            .table-container {max-height:600px; overflow-y:auto; overflow-x:auto;}
-            table {width: 100%; min-width:600px; border-collapse:collapse; font-family:sans-serif; font-size: 20px;}
-            thead tr {position:sticky; top:0; background:#1e2a3a; color:white; z-index:1;}
-            th, td {padding: 10px 16px 10px 24px; text-align: center; border-bottom:1px solid #e5e7eb;}
-            th {text-transform: uppercase; text-align: center;}
-            tbody tr:hover {background: #464641;}
-            tbody tr:nth-child(even) {background: #babab4;}
-            .pill {padding: 2px 10px; border-radius: 12px; font-size: 20px;}
-            .pill-bulbOn, .pill-bulbOff, .pill-bulbChange {background: #4ade80;}
-            .pill-alexaBulbOn, .pill-alexaBulbOff, .pill-alexaBulbChange {background: #60d089;}
-            .pill-movingAroundHouse {background: #c55050;}
-            .pill-outsideDetection {background: #de7b1e;}
-            .pill-plugOn, .pill-plugOff {background: #a84ade;}
-
             .feed {position: relative; margin: 24px 0;}
             .feed-item {display: flex; align-items: center; gap: 16px; padding: 4px 0; font-family: -apple-system, sans-serif; font-size: 20px;}
-            .feed-time {width: 220px; white-space: nowrap; text-align: right; color: #6b7280; flex-shrink: 0; font-family: -apple-system, sans-serif; font-size: 20px;}
-            .feed-dot {width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; z-index: 1;}
+            .feed-item:hover {background: #9c9fa4}
+            .feed-time {width: 220px; white-space: nowrap; text-align: right; color: #000000; flex-shrink: 0; font-family: -apple-system, sans-serif; font-size: 20px;}
+            .feed-dot {width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #000000}
 
-            #dateFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; }
+            #dateFilter, #hourFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; }
         </style>
     </head>
 
@@ -41,6 +28,10 @@
             <option value="all">All dates</option>
         </select>
 
+        <select id="hourFilter">
+            <option value="all">All hours</option>
+        </select>
+
         <div style="display: flex; gap: 40px; align-items: flex-start;">
             <div style = "flex: 1">
                 <div class="feed" id = "feed"></div>
@@ -48,48 +39,61 @@
             <div style="width: 1400px; flex-shrink:0;">
                 <canvas id="numOfActivitiesBar"></canvas>
                 <canvas id="numOfActivitiesPie" width="1000" height="1000"></canvas>
+                <canvas id="packetCount"></canvas>
 
             </div>
         </div>
 
 
         <div style="width: 1700px;"><canvas id="numOfActivities"></canvas>
-        <!-- <div class="table-container">
-            <table id="timeline">
-            <thead>
-                <tr>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Activity</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        </div> -->
         <div class="feed" id="feed"></div>
 
         <script>
             csvFile = "data/sample.csv";
-            // buildTimeline();
             let allData = [];
             Papa.parse(csvFile, {
                 download: true,
                 header: true,
                 dynamicTyping: true,
                 complete: ({data}) => {
-                    allData = data.filter(row => row.label && row.label != "undefined" && row.windowStart)
+                    allData = data.filter(row => row.label && row.label != "undefined")
                     const dates = [...new Set(allData.map(row => new Date(row.windowStart * 1000).toLocaleDateString()))].sort();
                     const dateFilter = document.getElementById("dateFilter");
                     dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`);
-                    dateFilter.addEventListener("change", render);
+                    dateFilter.addEventListener("change", () => {
+                        const val = dateFilter.value;
+                        const hourFilter = document.getElementById("hourFilter");
+                        hourFilter.innerHTML = `<option value="all">All hours</option>`;
+                        if (val !== "all"){
+                            const dayData = allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
+                            const hours = [...new Set(dayData.map(row => new Date(row.windowStart * 1000).getHours()))].sort((a,b) => a - b);
+
+                            hours.forEach(hour => {
+                                const label = `${String(hour).padStart(2, '0')}:00 - ${String(hour).padStart(2, '0')}:59`;
+                                hourFilter.innerHTML += `<option value = "${hour}">${label}</option>`;
+                            });
+                            hourFilter.style.display = 'inline-block';
+                            hourFilter.addEventListener("change", render);
+                        }else{
+                            hourFilter.style.display = "none";
+                        }
+                        render();
+                    });
                     render();
                     console.log(data);
                 }
             })
 
         function render(){
-            const val = document.getElementById("dateFilter").value;
-            const filtered = val === "all" ? allData : allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
+            const dateVal = document.getElementById("dateFilter").value;
+            const hourVal = document.getElementById("hourFilter").value;
+
+            let filtered = dateVal === "all" ? allData : allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === dateVal);
+
+            if (hourVal !== "all"){
+                filtered = filtered.filter(row => new Date(row.windowStart * 1000).getHours() === Number(hourVal));
+            }
+
             buildCharts(filtered);
             buildFeed(filtered);
         }
@@ -97,6 +101,8 @@
             function buildCharts(data){
                 Chart.getChart("numOfActivitiesBar")?.destroy();
                 Chart.getChart("numOfActivitiesPie")?.destroy();
+                Chart.getChart("packetCount")?.destroy();
+
                 const activityCount = {};
                 data.forEach(row => {
                     activityCount[row.label] = (activityCount[row.label] || 0) + 1;
@@ -130,40 +136,47 @@
                         }]
                     }
                 })
-            }
 
-            function buildTimeline() {
-                fetch(csvFile).then(response => response.text()).then(data =>{
-                    const rows = data.trim().split("\n");
-                    const headers = rows[0].split(",");
+                
 
-                    const startTime = headers.indexOf("windowStart");
-                    const endTime = headers.indexOf("windowEnd");
-                    const labels = headers.indexOf("label");
+                const sorted = [...data].sort((a,b) => a.windowStart - b.windowStart);
+                const lineLabels = sorted.map(row => new Date(row.windowStart * 1000).toLocaleString());
+                const lineValues = sorted.map (row => row.packetCount || 0);
 
-                    const timeline = document.getElementById("timeline").getElementsByTagName("tbody")[0];
-                    for (let i = 1; i < rows.length; i++){
-                        const cells = rows[i].split(",");
-                        const row = timeline.insertRow();
-                        row.insertCell(0).innerText = new Date(cells[startTime] * 1000).toLocaleString();
-                        row.insertCell(1).innerText = new Date(cells[endTime] * 1000).toLocaleString();
-                        row.insertCell(2).innerHTML = `<span class="pill pill-${cells[labels]}">${cells[labels]}</span>`;
-                    }
+                const packetLine = document.getElementById("packetCount").getContext("2d");
+                new Chart(packetLine, {
+                    type:"line",
+                    options: {
+                        scales: {
+                            x: {ticks: {maxTicksLimit: 6}},
+                            y: {type: 'logarithmic'}
+                        }
+                    },
+                    data:{
+                        labels: lineLabels,
+                        datasets: [{
+                            label: "Packet Count",
+                            data: lineValues,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2
+                        }]
+                    },
                 })
             }
 
             function buildFeed(data){
                 const dotColours = {
                     bulbOn: "#4ade80",
-                    bulbOff: "#4ade80",
-                    bulbChange: "#4ade80",
+                    bulbOff: "#c55050",
+                    bulbChange: "#d6f50f",
                     alexaBulbOn: "#60d089",
-                    alexaBulbOff: "#60d089",
-                    alexaBulbChange: "#60d089",
-                    movingAroundHouse: "#c55050",
-                    outsideDetection: "#de7b1e",
-                    plugOn: "#a84ade",
-                    plugOff: "#a84ade"
+                    alexaBulbOff: "#c55050",
+                    alexaBulbChange: "#d6f50f",
+                    movingAroundHouse: "#a147c5",
+                    outsideDetection: "#851fad",
+                    plugOn: "#4ade80",
+                    plugOff: "#c55050"
                 };
 
                 const displayName = {
@@ -179,7 +192,7 @@
                     "plugOff": "Plug turned off"
                 }
 
-                const valid = data.filter(row => row.label && row.label != "undefined" && row.windowStart);
+                const valid = data.filter(row => row.label && row.label != "undefined");
                 const sorted = [...valid].sort((a,b) => b.windowStart - a.windowStart);
 
                 document.getElementById("feed").innerHTML = sorted.map(row => {
