@@ -9,20 +9,23 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script> <!-- https://www.chartjs.org/docs/latest/getting-started/installation.html (link incase I change to using npm to download)-->
         
         <style>
-            h1 {font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size:50px; text-align: center; font-weight: 600; color: #1d1d1f;}
+            h1 {font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size:50px; text-align: center; font-weight: 600; color: #f1f5f9;}
 
-            .feed {position: relative; margin: 24px 0;}
-            .feed-item {display: flex; align-items: center; gap: 16px; padding: 4px 0; font-family: -apple-system, sans-serif; font-size: 20px;}
-            .feed-item:hover {background: #9c9fa4}
-            .feed-time {width: 220px; white-space: nowrap; text-align: right; color: #000000; flex-shrink: 0; font-family: -apple-system, sans-serif; font-size: 20px;}
-            .feed-dot {width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #000000}
+            body { background: #1c1c1c;}
 
-            #dateFilter, #hourFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; }
+            .feed {position: relative; margin: 24px 0; display: flex; flex-direction: column; gap: 14px;}
+            .feed-item {display: flex; align-items: center; gap: 16px; padding: 4px 0; font-family: -apple-system, sans-serif; font-size: 20px; color: #f1f5f9; border: 1px solid #263044; border-radius: 8px;}
+            .feed-item:hover {background: #475e83}
+            .feed-time {width: 220px; white-space: nowrap; text-align: right; color: #f1f5f9; flex-shrink: 0; font-family: -apple-system, sans-serif; font-size: 20px;}
+            .feed-dot {width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #f1f5f9}
+
+            #dateFilter, #hourFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; border-color: white; background: black; color: #f1f5f9;}
+        
         </style>
     </head>
 
     <body>
-        <h1>Spyware Dashboard</h1>
+        <h1>Activity Inference Dashboard</h1>
 
         <select id="dateFilter">
             <option value="all">All dates</option>
@@ -51,6 +54,9 @@
         <div class="feed" id="feed"></div>
 
         <script>
+            Chart.defaults.color = '#f1f5f9';
+
+            
             csvFile = "data/sample.csv";
             let allData = [];
             Papa.parse(csvFile, {
@@ -105,12 +111,25 @@
                 Chart.getChart("numOfActivitiesPie")?.destroy();
                 Chart.getChart("packetCount")?.destroy();
 
+                const displayName = {
+                    bulbOn: "Bulb on",
+                    bulbOff: "Bulb off",
+                    bulbChange: "Bulb changed",
+                    alexaBulbOn: "Alexa bulb on",
+                    alexaBulbOff: "Alexa bulb off",
+                    alexaBulbChange: "Alexa bulb change",
+                    movingAroundHouse: "Motion inside",
+                    outsideDetection: "Motion outside",
+                    plugOn: "Plug on",
+                    "plugOff": "Plug off"
+                }
+
                 const activityCount = {};
                 data.forEach(row => {
                     activityCount[row.label] = (activityCount[row.label] || 0) + 1;
                 });
 
-                const labels = Object.keys(activityCount).filter(label => label != "undefined");
+                const labels = Object.keys(activityCount).map(label => displayName[label] || label).filter(label => label != "undefined");
                 const values = Object.values(activityCount);
 
                 const activityBar = document.getElementById("numOfActivitiesBar").getContext("2d");
@@ -222,7 +241,7 @@
                 document.getElementById("feed").innerHTML = sorted.map(row => {
                     const time = new Date(row.windowStart * 1000).toLocaleString();
                     const colour = dotColours[row.label] || "#000000";
-                    return `<div class="feed-item">
+                    return `<div class="feed-item" style="border-color: ${colour}70">
                         <span class="feed-time">${time}</span>
                         <span class="feed-dot" style="background:${colour}"></span>
                         <span class="feed-item-${row.label}">${displayName[row.label] || row.label}</span>
