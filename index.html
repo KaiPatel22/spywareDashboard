@@ -7,29 +7,54 @@
         <!-- Retrieved 2026-04-15, License - CC BY-SA 3.0 -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script> <!-- Maybe download the  papa parse (like on stack overflow)-->
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script> <!-- https://www.chartjs.org/docs/latest/getting-started/installation.html (link incase I change to using npm to download)-->
-    </head>
+        
+        <style>
+            h1 {font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size:50px; text-align: center; font-weight: 600; color: #1d1d1f;}
 
-    <style>
-        h1 {font-size:28px; font-weight: 600; color: #1d1d1f;}
-        .table-container {max-height:600px; overflow-y:auto; overflow-x:auto;}
-        table {width: 100%; min-width:600px; border-collapse:collapse; font-family:sans-serif; font-size: 20px;}
-        thead tr {position:sticky; top:0; background:#1e2a3a; color:white; z-index:1;}
-        th, td {padding: 10px 16px 10px 24px; text-align: center; border-bottom:1px solid #e5e7eb;}
-        th {text-transform: uppercase; text-align: center;}
-        tbody tr:hover {background: #464641;}
-        tbody tr:nth-child(even) {background: #babab4;}
-        .pill {padding: 2px 10px; border-radius: 12px; font-size: 20px;}
-        .pill-bulbOn, .pill-bulbOff, .pill-bulbChange {background: #4ade80;}
-        .pill-alexaBulbOn, .pill-alexaBulbOff, .pill-alexaBulbChange {background: #60d089;}
-        .pill-movingAroundHouse {background: #c55050;}
-        .pill-outsideDetection {background: #de7b1e;}
-        .pill-plugOn, .pill-plugOff {background: #a84ade;}
-    </style>
+            .table-container {max-height:600px; overflow-y:auto; overflow-x:auto;}
+            table {width: 100%; min-width:600px; border-collapse:collapse; font-family:sans-serif; font-size: 20px;}
+            thead tr {position:sticky; top:0; background:#1e2a3a; color:white; z-index:1;}
+            th, td {padding: 10px 16px 10px 24px; text-align: center; border-bottom:1px solid #e5e7eb;}
+            th {text-transform: uppercase; text-align: center;}
+            tbody tr:hover {background: #464641;}
+            tbody tr:nth-child(even) {background: #babab4;}
+            .pill {padding: 2px 10px; border-radius: 12px; font-size: 20px;}
+            .pill-bulbOn, .pill-bulbOff, .pill-bulbChange {background: #4ade80;}
+            .pill-alexaBulbOn, .pill-alexaBulbOff, .pill-alexaBulbChange {background: #60d089;}
+            .pill-movingAroundHouse {background: #c55050;}
+            .pill-outsideDetection {background: #de7b1e;}
+            .pill-plugOn, .pill-plugOff {background: #a84ade;}
+
+            .feed {position: relative; margin: 24px 0;}
+            .feed-item {display: flex; align-items: center; gap: 16px; padding: 4px 0; font-family: -apple-system, sans-serif; font-size: 20px;}
+            .feed-time {width: 220px; white-space: nowrap; text-align: right; color: #6b7280; flex-shrink: 0; font-family: -apple-system, sans-serif; font-size: 20px;}
+            .feed-dot {width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; z-index: 1;}
+
+            #dateFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; }
+        </style>
+    </head>
 
     <body>
         <h1>Spyware Dashboard</h1>
+
+        <select id="dateFilter">
+            <option value="all">All dates</option>
+        </select>
+
+        <div style="display: flex; gap: 40px; align-items: flex-start;">
+            <div style = "flex: 1">
+                <div class="feed" id = "feed"></div>
+            </div>
+            <div style="width: 1400px; flex-shrink:0;">
+                <canvas id="numOfActivitiesBar"></canvas>
+                <canvas id="numOfActivitiesPie" width="1000" height="1000"></canvas>
+
+            </div>
+        </div>
+
+
         <div style="width: 1700px;"><canvas id="numOfActivities"></canvas>
-        <div class="table-container">
+        <!-- <div class="table-container">
             <table id="timeline">
             <thead>
                 <tr>
@@ -40,23 +65,38 @@
             </thead>
             <tbody></tbody>
         </table>
-        </div>
+        </div> -->
+        <div class="feed" id="feed"></div>
 
         <script>
             csvFile = "data/sample.csv";
-            buildTimeline();
+            // buildTimeline();
+            let allData = [];
             Papa.parse(csvFile, {
                 download: true,
                 header: true,
                 dynamicTyping: true,
                 complete: ({data}) => {
+                    allData = data.filter(row => row.label && row.label != "undefined" && row.windowStart)
+                    const dates = [...new Set(allData.map(row => new Date(row.windowStart * 1000).toLocaleDateString()))].sort();
+                    const dateFilter = document.getElementById("dateFilter");
+                    dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`);
+                    dateFilter.addEventListener("change", render);
+                    render();
                     console.log(data);
-                    buildCharts(data);
                 }
             })
-        
+
+        function render(){
+            const val = document.getElementById("dateFilter").value;
+            const filtered = val === "all" ? allData : allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
+            buildCharts(filtered);
+            buildFeed(filtered);
+        }
 
             function buildCharts(data){
+                Chart.getChart("numOfActivitiesBar")?.destroy();
+                Chart.getChart("numOfActivitiesPie")?.destroy();
                 const activityCount = {};
                 data.forEach(row => {
                     activityCount[row.label] = (activityCount[row.label] || 0) + 1;
@@ -65,9 +105,23 @@
                 const labels = Object.keys(activityCount).filter(label => label != "undefined");
                 const values = Object.values(activityCount);
 
-                const activityFreq = document.getElementById("numOfActivities").getContext("2d");
-                new Chart(activityFreq, {
+                const activityBar = document.getElementById("numOfActivitiesBar").getContext("2d");
+                const activityPie = document.getElementById("numOfActivitiesPie").getContext("2d");
+                new Chart(activityBar, {
                     type:"bar",
+                    data:{
+                        labels: labels,
+                        datasets: [{
+                            label: "Activity Count",
+                            data: values
+                        }]
+                    }
+                })
+                new Chart(activityPie, {
+                    type:"pie",
+                    options:{
+                        responsive:false
+                    },
                     data:{
                         labels: labels,
                         datasets: [{
@@ -97,8 +151,47 @@
                     }
                 })
             }
-                
 
+            function buildFeed(data){
+                const dotColours = {
+                    bulbOn: "#4ade80",
+                    bulbOff: "#4ade80",
+                    bulbChange: "#4ade80",
+                    alexaBulbOn: "#60d089",
+                    alexaBulbOff: "#60d089",
+                    alexaBulbChange: "#60d089",
+                    movingAroundHouse: "#c55050",
+                    outsideDetection: "#de7b1e",
+                    plugOn: "#a84ade",
+                    plugOff: "#a84ade"
+                };
+
+                const displayName = {
+                    bulbOn: "Bulb turned on",
+                    bulbOff: "Bulb turned off",
+                    bulbChange: "Bulb brightness or colour changed",
+                    alexaBulbOn: "Bulb turned on via Alexa",
+                    alexaBulbOff: "Bulb turned off via Alexa",
+                    alexaBulbChange: "Bulb brightness or colour changed via Alexa",
+                    movingAroundHouse: "Motion detected inside the house",
+                    outsideDetection: "Motion detected outside the house",
+                    plugOn: "Plug turned on",
+                    "plugOff": "Plug turned off"
+                }
+
+                const valid = data.filter(row => row.label && row.label != "undefined" && row.windowStart);
+                const sorted = [...valid].sort((a,b) => b.windowStart - a.windowStart);
+
+                document.getElementById("feed").innerHTML = sorted.map(row => {
+                    const time = new Date(row.windowStart * 1000).toLocaleString();
+                    const colour = dotColours[row.label] || "#000000";
+                    return `<div class="feed-item">
+                        <span class="feed-time">${time}</span>
+                        <span class="feed-dot" style="background:${colour}"></span>
+                        <span class="feed-item-${row.label}">${displayName[row.label] || row.label}</span>
+                        </div>`;
+                }).join('');
+            }
         </script>
     </body>
 </html>
