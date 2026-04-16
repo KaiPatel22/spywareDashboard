@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
     <head>
         <!-- Source - https://stackoverflow.com/a/34529962 -->
         <!-- Posted by Ramesh Ponnada -->
@@ -7,12 +8,44 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script> <!-- Maybe download the  papa parse (like on stack overflow)-->
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script> <!-- https://www.chartjs.org/docs/latest/getting-started/installation.html (link incase I change to using npm to download)-->
     </head>
+
+    <style>
+        h1 {font-size:28px; font-weight: 600; color: #1d1d1f;}
+        .table-container {max-height:600px; overflow-y:auto; overflow-x:auto;}
+        table {width: 100%; min-width:600px; border-collapse:collapse; font-family:sans-serif; font-size: 20px;}
+        thead tr {position:sticky; top:0; background:#1e2a3a; color:white; z-index:1;}
+        th, td {padding: 10px 16px 10px 24px; text-align: center; border-bottom:1px solid #e5e7eb;}
+        th {text-transform: uppercase; text-align: center;}
+        tbody tr:hover {background: #464641;}
+        tbody tr:nth-child(even) {background: #babab4;}
+        .pill {padding: 2px 10px; border-radius: 12px; font-size: 20px;}
+        .pill-bulbOn, .pill-bulbOff, .pill-bulbChange {background: #4ade80;}
+        .pill-alexaBulbOn, .pill-alexaBulbOff, .pill-alexaBulbChange {background: #60d089;}
+        .pill-movingAroundHouse {background: #c55050;}
+        .pill-outsideDetection {background: #de7b1e;}
+        .pill-plugOn, .pill-plugOff {background: #a84ade;}
+    </style>
+
     <body>
-        <h1>"Spyware Dashboard - Test"</h1>
-        <canvas id="numOfActivities"></canvas>
-        <canvas id="timeline"></canvas>
+        <h1>Spyware Dashboard</h1>
+        <div style="width: 1700px;"><canvas id="numOfActivities"></canvas>
+        <div class="table-container">
+            <table id="timeline">
+            <thead>
+                <tr>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Activity</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        </div>
+
         <script>
-            Papa.parse("data/sample.csv", {
+            csvFile = "data/sample.csv";
+            buildTimeline();
+            Papa.parse(csvFile, {
                 download: true,
                 header: true,
                 dynamicTyping: true,
@@ -43,8 +76,29 @@
                         }]
                     }
                 })
-
             }
+
+            function buildTimeline() {
+                fetch(csvFile).then(response => response.text()).then(data =>{
+                    const rows = data.trim().split("\n");
+                    const headers = rows[0].split(",");
+
+                    const startTime = headers.indexOf("windowStart");
+                    const endTime = headers.indexOf("windowEnd");
+                    const labels = headers.indexOf("label");
+
+                    const timeline = document.getElementById("timeline").getElementsByTagName("tbody")[0];
+                    for (let i = 1; i < rows.length; i++){
+                        const cells = rows[i].split(",");
+                        const row = timeline.insertRow();
+                        row.insertCell(0).innerText = new Date(cells[startTime] * 1000).toLocaleString();
+                        row.insertCell(1).innerText = new Date(cells[endTime] * 1000).toLocaleString();
+                        row.insertCell(2).innerHTML = `<span class="pill pill-${cells[labels]}">${cells[labels]}</span>`;
+                    }
+                })
+            }
+                
+
         </script>
     </body>
 </html>
