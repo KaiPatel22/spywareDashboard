@@ -21,11 +21,17 @@
 
             #dateFilter, #hourFilter {font-size: 20px; padding: 8px 12px; border-radius: 1px; border-color: white; background: black; color: #f1f5f9;}
         
+            #csvFile {display: none;}
+            #csvLabel {font-size: 20px; padding: 6px 12px; border-radius: 6px; border: 1px solid #f1f5f9; border-color: white; background: black; color: #f1f5f9; font-family: system-ui, sans-serif;}
+
         </style>
     </head>
 
     <body>
         <h1>Activity Inference Dashboard</h1>
+
+        <label id="csvLabel" for="csvFile">Select a CSV</label>
+        <input type="file" id="csvFile" accept=".csv">
 
         <select id="dateFilter">
             <option value="all">All dates</option>
@@ -53,44 +59,47 @@
         <div style="width: 1700px;"><canvas id="numOfActivities"></canvas>
         <div class="feed" id="feed"></div>
 
+
+
         <script>
             Chart.defaults.color = '#f1f5f9';
 
-            
-            csvFile = "data/realMorningData.csv";
             let allData = [];
-            Papa.parse(csvFile, {
-                download: true,
-                header: true,
-                dynamicTyping: true,
-                complete: ({data}) => {
-                    allData = data.filter(row => row.label && row.label != "undefined")
-                    const dates = [...new Set(allData.map(row => new Date(row.windowStart * 1000).toLocaleDateString()))].sort();
-                    const dateFilter = document.getElementById("dateFilter");
-                    dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`);
-                    dateFilter.addEventListener("change", () => {
-                        const val = dateFilter.value;
-                        const hourFilter = document.getElementById("hourFilter");
-                        hourFilter.innerHTML = `<option value="all">All hours</option>`;
-                        if (val !== "all"){
-                            const dayData = allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
-                            const hours = [...new Set(dayData.map(row => new Date(row.windowStart * 1000).getHours()))].sort((a,b) => a - b);
+            document.getElementById('csvFile').addEventListener("change", function(event) {
+                const file = event.target.files[0];
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    complete: ({data}) => {
+                        allData = data.filter(row => row.label && row.label != "undefined")
+                        const dates = [...new Set(allData.map(row => new Date(row.windowStart * 1000).toLocaleDateString()))].sort();
+                        const dateFilter = document.getElementById("dateFilter");
+                        dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`);
+                        dateFilter.addEventListener("change", () => {
+                            const val = dateFilter.value;
+                            const hourFilter = document.getElementById("hourFilter");
+                            hourFilter.innerHTML = `<option value="all">All hours</option>`;
+                            if (val !== "all"){
+                                const dayData = allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
+                                const hours = [...new Set(dayData.map(row => new Date(row.windowStart * 1000).getHours()))].sort((a,b) => a - b);
 
-                            hours.forEach(hour => {
-                                const label = `${String(hour).padStart(2, '0')}:00 - ${String(hour).padStart(2, '0')}:59`;
-                                hourFilter.innerHTML += `<option value = "${hour}">${label}</option>`;
-                            });
-                            hourFilter.style.display = 'inline-block';
-                            hourFilter.addEventListener("change", render);
-                        }else{
-                            hourFilter.style.display = "none";
-                        }
+                                hours.forEach(hour => {
+                                    const label = `${String(hour).padStart(2, '0')}:00 - ${String(hour).padStart(2, '0')}:59`;
+                                    hourFilter.innerHTML += `<option value = "${hour}">${label}</option>`;
+                                });
+                                hourFilter.style.display = 'inline-block';
+                                hourFilter.addEventListener("change", render);
+                            }else{
+                                hourFilter.style.display = "none";
+                            }
+                            render();
+                        });
                         render();
-                    });
-                    render();
-                    console.log(data);
-                }
-            })
+                        console.log(data);
+                    }
+                });
+            });
+
 
         function render(){
             const dateVal = document.getElementById("dateFilter").value;
