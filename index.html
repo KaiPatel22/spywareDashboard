@@ -65,9 +65,10 @@
             Chart.defaults.color = '#f1f5f9';
 
             let allData = [];
-            document.getElementById('csvFile').addEventListener("change", function(event) {
-                const file = event.target.files[0];
-                Papa.parse(file, {
+            // document.getElementById('csvFile').addEventListener("change", function(event) {
+                // const file = event.target.files[0];
+                Papa.parse('data/realMorningData.csv', {
+                    download: true,
                     header: true,
                     dynamicTyping: true,
                     complete: ({data}) => {
@@ -98,7 +99,34 @@
                         console.log(data);
                     }
                 });
-            });
+            // });
+
+        
+        function inferEvents(order){
+            const result = [];
+            let i = 0;
+            while (i < order.length){
+                const currentEvent = order[i];
+                const nextEvent = order[i+1];
+                if (nextEvent && (nextEvent.windowStart - currentEvent.windowStart) <= 15){
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'outsideDetection'){
+                        console.log("Inference: Someone left the house");
+                        result.push({type: 'inferred', activity: 'Someone left the house', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                    if (currentEvent.label === "outsideDetection" && nextEvent.label === 'movingAroundHouse'){
+                        console.log("Inference: Someone entered the house");
+                        result.push({type: 'inferred', activity: 'Someone entered the house', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                }
+                result.push({type : 'noInference', row: currentEvent});
+                i++;
+            }
+            return result;
+        }
 
 
         function render(){
@@ -247,15 +275,48 @@
                 const valid = data.filter(row => row.label && row.label != "undefined");
                 const sorted = [...valid].sort((a,b) => b.windowStart - a.windowStart);
 
-                document.getElementById("feed").innerHTML = sorted.map(row => {
-                    const time = new Date(row.windowStart * 1000).toLocaleString();
-                    const colour = dotColours[row.label] || "#000000";
-                    return `<div class="feed-item" style="border-color: ${colour}70">
-                        <span class="feed-time">${time}</span>
-                        <span class="feed-dot" style="background:${colour}"></span>
-                        <span class="feed-item-${row.label}">${displayName[row.label] || row.label}</span>
-                        </div>`;
-                }).join('');
+                // document.getElementById("feed").innerHTML = sorted.map(row => {
+                //     const time = new Date(row.windowStart * 1000).toLocaleString();
+                //     const colour = dotColours[row.label] || "#000000";
+                //     return `<div class="feed-item" style="border-color: ${colour}70">
+                //         <span class="feed-time">${time}</span>
+                //         <span class="feed-dot" style="background:${colour}"></span>
+                //         <span class="feed-item-${row.label}">${displayName[row.label] || row.label}</span>
+                //         </div>`;
+                // }).join('');
+
+                const order = [...valid].sort((a,b) => a.windowStart - b.windowStart);
+                const activityList = inferEvents(order).reverse();
+                
+                document.getElementById("feed").innerHTML = activityList.map((activity, index) => {
+                    if (activity.type === 'inferred'){
+                        const subCards = activity.events.slice().reverse().map(e => `
+                        <div class="feed-item" style="opacity:0.5; border-color:${dotColours[e.label] || '#000000'}70">
+                            <span class="feed-time">${new Date(e.windowStart * 1000).toLocaleString()}</span>
+                            <span class="feed-dot" style="background:${dotColours[e.label] || '#000000'}"></span>
+                            <span>${displayName[e.label] || e.label}</span>
+                            </div>`).join('');
+                        
+                        return `<div class="feed-item inferred-card" 
+                            style="flex-direction:column; align-items:stretch; border-color:#22d3ee; box-shadow: 0 0 18px 4 px #22d3ee80; cursor:pointer;"<div class="feed-item inferred-card" 
+                                                        style="flex-direction:column; align-items:stretch; border-colour:#22d3ee; box-shadow: 0 0 18px 4 px #22d3ee80; cursor:pointer;"
+                                                        onclick=" const s = this.querySelector('.inferred-sub'); s.style.display = s.style.display === 'none' ? 'flex' : 'none';">
+                                <div style="display:flex; align-items:center; gap: 16px; padding: 4px 0;">
+                                    <span class="feed-time">${new Date(activity.windowStart * 1000).toLocaleString()}</span>
+                                    <span class="feed-dot" style="background: #22d3ee; box-shadow: 0 0 8px #22d3ee"></span>
+                                    <span style="color: #22d3ee; font-weight:600;">${activity.activity}</span>
+                                </div>
+                                <div class= "inferred-sub" style="display:none; flex-direction:column; gap:8px; padding: 8px 16px;">${subCards}</div>
+                                </div>`;
+                    }else{
+                        return `<div class= "feed-item" style="border-color:${dotColours[activity.row.label] || '#000000'}70">
+                            <span class= "feed-time">${new Date(activity.row.windowStart * 1000).toLocaleString()}</span>
+                            <span class = "feed-dot" style="background:${dotColours[activity.row.label] || '#000000'}"></span>
+                            <span>${displayName[activity.row.label] || activity.row.label}</span>
+                            </div>`;
+
+                    }
+                }).join('')
             }
         </script>
     </body>
