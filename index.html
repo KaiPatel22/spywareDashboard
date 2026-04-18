@@ -65,10 +65,9 @@
             Chart.defaults.color = '#f1f5f9';
 
             let allData = [];
-            // document.getElementById('csvFile').addEventListener("change", function(event) {
-                // const file = event.target.files[0];
-                Papa.parse('data/realMorningData.csv', {
-                    download: true,
+            document.getElementById('csvFile').addEventListener("change", function(event) {
+                const file = event.target.files[0];
+                Papa.parse(file, {
                     header: true,
                     dynamicTyping: true,
                     complete: ({data}) => {
@@ -99,7 +98,7 @@
                         console.log(data);
                     }
                 });
-            // });
+            });
 
         
         function inferEvents(order){
