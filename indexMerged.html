@@ -121,6 +121,35 @@
                         continue;
                     }
                 }
+
+                if (nextEvent && (nextEvent.windowStart - currentEvent.windowStart) <= 10){
+                    if (currentEvent.label === "bulbEvent" && nextEvent.label === 'movingAroundHouse'){
+                        console.log("Inference: bulb turned off");
+                        result.push({type: 'inferred', activity: 'Bulb turned off', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'bulbEvent'){
+                        console.log("Inference: Bulb turned on");
+                        result.push({type: 'inferred', activity: 'Bulb turned on', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                
+                    if (currentEvent.label === "alexaBulbEvent" && nextEvent.label === 'movingAroundHouse'){
+                        console.log("Inference: bulb turned off via Alexa");
+                        result.push({type: 'inferred', activity: 'Bulb turned off via Alexa', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'alexaBulbEvent'){
+                        console.log("Inference: Bulb turned on via Alexa");
+                        result.push({type: 'inferred', activity: 'Bulb turned on via Alexa', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        i += 2; 
+                        continue;
+                    }
+                }
+
                 result.push({type : 'noInference', row: currentEvent});
                 i++;
             }
@@ -253,12 +282,8 @@
 
             function buildFeed(data){
                 const dotColours = {
-                    bulbOn: "#4ade80",
-                    bulbOff: "#c55050",
-                    bulbChange: "#d6f50f",
-                    alexaBulbOn: "#60d089",
-                    alexaBulbOff: "#c55050",
-                    alexaBulbChange: "#d6f50f",
+                    bulbEvent: "#d6f50f",
+                    alexaBulbEvent: "#d6f50f",
                     movingAroundHouse: "#a147c5",
                     outsideDetection: "#851fad",
                     plugOn: "#4ade80",
