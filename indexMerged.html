@@ -8,6 +8,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script> <!-- Maybe download the  papa parse (like on stack overflow)-->
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script> <!-- https://www.chartjs.org/docs/latest/getting-started/installation.html (link incase I change to using npm to download)-->
         
+        <!-- Styling for all elements such as heading, the body and the feed/filter buttons-->
         <style>
             h1 {font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size:50px; text-align: center; font-weight: 600; color: #f1f5f9;}
 
@@ -65,25 +66,25 @@
             Chart.defaults.color = '#f1f5f9';
 
             let allData = [];
-            document.getElementById('csvFile').addEventListener("change", function(event) {
+            document.getElementById('csvFile').addEventListener("change", function(event) { // Listens for a change in the CSV file input and parses it with Papa Parse
                 const file = event.target.files[0];
                 Papa.parse(file, {
                     header: true,
                     dynamicTyping: true,
                     complete: ({data}) => {
-                        allData = data.filter(row => row.label && row.label != "undefined")
+                        allData = data.filter(row => row.label && row.label != "undefined") // Filter logic to remove rows with unrecognised labels, specifically those with undefined as this appeared in the dataset
                         const dates = [...new Set(allData.map(row => new Date(row.windowStart * 1000).toLocaleDateString()))].sort();
                         const dateFilter = document.getElementById("dateFilter");
-                        dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`);
+                        dates.forEach(date => dateFilter.innerHTML += `<option value = "${date}">${date}</option>`); // Logic for filtering by the day and waits for a change in the date filter below
                         dateFilter.addEventListener("change", () => {
                             const val = dateFilter.value;
-                            const hourFilter = document.getElementById("hourFilter");
+                            const hourFilter = document.getElementById("hourFilter"); // Creates the hour dropdown options after a day has been selected
                             hourFilter.innerHTML = `<option value="all">All hours</option>`;
                             if (val !== "all"){
                                 const dayData = allData.filter(row => new Date(row.windowStart * 1000).toLocaleDateString() === val);
                                 const hours = [...new Set(dayData.map(row => new Date(row.windowStart * 1000).getHours()))].sort((a,b) => a - b);
 
-                                hours.forEach(hour => {
+                                hours.forEach(hour => { // Hour filtering logic to show dropdown for hours available
                                     const label = `${String(hour).padStart(2, '0')}:00 - ${String(hour).padStart(2, '0')}:59`;
                                     hourFilter.innerHTML += `<option value = "${hour}">${label}</option>`;
                                 });
@@ -104,17 +105,17 @@
         function inferEvents(order){
             const result = [];
             let i = 0;
-            while (i < order.length){
+            while (i < order.length){ // Loops through every event in the feed and checks for inference rules 
                 const currentEvent = order[i];
                 const nextEvent = order[i+1];
                 if (nextEvent && (nextEvent.windowStart - currentEvent.windowStart) <= 15){
-                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'outsideDetection'){
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'outsideDetection'){ // Inference logic rule 1: if motion inside the house and then motion detected outside within 15 seconds of each other, can infer that someone has left the house.
                         console.log("Inference: Someone left the house");
-                        result.push({type: 'inferred', activity: 'Someone left the house', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
+                        result.push({type: 'inferred', activity: 'Someone left the house', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart}); // Keeps track of the events that have been inferred using an array 
                         i += 2; 
                         continue;
                     }
-                    if (currentEvent.label === "outsideDetection" && nextEvent.label === 'movingAroundHouse'){
+                    if (currentEvent.label === "outsideDetection" && nextEvent.label === 'movingAroundHouse'){ // Inference logic rule 2: if motion outside the house and then motion detected inside within 15 seconds of each other, can infer that someone has entered the house.
                         console.log("Inference: Someone entered the house");
                         result.push({type: 'inferred', activity: 'Someone entered the house', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
                         i += 2; 
@@ -123,26 +124,26 @@
                 }
 
                 if (nextEvent && (nextEvent.windowStart - currentEvent.windowStart) <= 10){
-                    if (currentEvent.label === "bulbEvent" && nextEvent.label === 'movingAroundHouse'){
+                    if (currentEvent.label === "bulbEvent" && nextEvent.label === 'movingAroundHouse'){ // Inference logic rule 3: if something happens to the bulb and then motion detected inside within 10 seconds of each other, likely someone left a room so can infer a bulb was turned off.
                         console.log("Inference: bulb turned off");
                         result.push({type: 'inferred', activity: 'Bulb turned off', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
                         i += 2; 
                         continue;
                     }
-                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'bulbEvent'){
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'bulbEvent'){ // Inference logic rule 4: if motion is detected within the house and then something happens to the bulb within 10 seconds of each other, likely someone entered a room so can infer a bulb was turned on.
                         console.log("Inference: Bulb turned on");
                         result.push({type: 'inferred', activity: 'Bulb turned on', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
                         i += 2; 
                         continue;
                     }
                 
-                    if (currentEvent.label === "alexaBulbEvent" && nextEvent.label === 'movingAroundHouse'){
+                    if (currentEvent.label === "alexaBulbEvent" && nextEvent.label === 'movingAroundHouse'){ // Inference logic rule 5: if something happens to the bulb via alexa and then motion detected inside within 10 seconds of each other, likely someone left a room so can infer a bulb was turned off.
                         console.log("Inference: bulb turned off via Alexa");
                         result.push({type: 'inferred', activity: 'Bulb turned off via Alexa', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
                         i += 2; 
                         continue;
                     }
-                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'alexaBulbEvent'){
+                    if (currentEvent.label === "movingAroundHouse" && nextEvent.label === 'alexaBulbEvent'){ // Inference logic rule 5: if motion is detected within the house and then something happens to the bulb via alexa within 10 seconds of each other, likely someone entered a room so can infer a bulb was turned on.
                         console.log("Inference: Bulb turned on via Alexa");
                         result.push({type: 'inferred', activity: 'Bulb turned on via Alexa', events: [currentEvent, nextEvent], windowStart: currentEvent.windowStart});
                         i += 2; 
@@ -150,14 +151,14 @@
                     }
                 }
 
-                result.push({type : 'noInference', row: currentEvent});
+                result.push({type : 'noInference', row: currentEvent}); // pushed to the array an noInference object if conditions have not been satisfied
                 i++;
             }
             return result;
         }
 
 
-        function render(){
+        function render(){ // Function logic to render the charts and feed based on the selected filters
             const dateVal = document.getElementById("dateFilter").value;
             const hourVal = document.getElementById("hourFilter").value;
 
@@ -172,11 +173,11 @@
         }
 
             function buildCharts(data){
-                Chart.getChart("numOfActivitiesBar")?.destroy();
+                Chart.getChart("numOfActivitiesBar")?.destroy(); // Destroys old charts, needed for when updating filters
                 Chart.getChart("numOfActivitiesPie")?.destroy();
                 Chart.getChart("packetCount")?.destroy();
 
-                const displayName = {
+                const displayName = { // Changes the event labels to make them user friendly for the charts
                     bulbOn: "Bulb on",
                     bulbOff: "Bulb off",
                     bulbChange: "Bulb changed",
@@ -199,7 +200,7 @@
 
                 const activityBar = document.getElementById("numOfActivitiesBar").getContext("2d");
                 const activityPie = document.getElementById("numOfActivitiesPie").getContext("2d");
-                new Chart(activityBar, {
+                new Chart(activityBar, { // Creating the bar chart to show number of occurences of each event type 
                     type:"bar",
                     options:{
                         plugins:{
@@ -218,7 +219,7 @@
                         }]
                     }
                 })
-                new Chart(activityPie, {
+                new Chart(activityPie, { // Creating the pie chart to show number of occurences of each event type 
                     type:"pie",
                     options:{
                         plugins:{
@@ -240,13 +241,13 @@
 
 
 
-                const sorted = [...data].sort((a,b) => a.windowStart - b.windowStart);
+                const sorted = [...data].sort((a,b) => a.windowStart - b.windowStart); // Sorts the events in chronological order
                 const lineLabels = sorted.map(row => new Date(row.windowStart * 1000).toLocaleString());
                 const lineValues = sorted.map (row => row.packetCount || 0);
                 const packetsPerSecondValues = sorted.map(row => row.packetsPerSecond || 0);
 
                 const packetLine = document.getElementById("packetCount").getContext("2d");
-                new Chart(packetLine, {
+                new Chart(packetLine, { // Creating the line graph to show packet count and throughput 
                     type:"line",
                     options: {
                         scales: {
@@ -280,8 +281,8 @@
                 })
             }
 
-            function buildFeed(data){
-                const dotColours = {
+            function buildFeed(data){ 
+                const dotColours = { // Colours for each of the feed event types 
                     bulbEvent: "#d6f50f",
                     alexaBulbEvent: "#d6f50f",
                     movingAroundHouse: "#a147c5",
@@ -290,7 +291,7 @@
                     plugOff: "#c55050"
                 };
 
-                const displayName = {
+                const displayName = { // Changes event labels to make them user friendly for the feed
                     bulbOn: "Bulb turned on",
                     bulbOff: "Bulb turned off",
                     bulbChange: "Bulb brightness or colour changed",
@@ -304,23 +305,12 @@
                 }
 
                 const valid = data.filter(row => row.label && row.label != "undefined");
-                const sorted = [...valid].sort((a,b) => b.windowStart - a.windowStart);
 
-                // document.getElementById("feed").innerHTML = sorted.map(row => {
-                //     const time = new Date(row.windowStart * 1000).toLocaleString();
-                //     const colour = dotColours[row.label] || "#000000";
-                //     return `<div class="feed-item" style="border-color: ${colour}70">
-                //         <span class="feed-time">${time}</span>
-                //         <span class="feed-dot" style="background:${colour}"></span>
-                //         <span class="feed-item-${row.label}">${displayName[row.label] || row.label}</span>
-                //         </div>`;
-                // }).join('');
-
-                const order = [...valid].sort((a,b) => a.windowStart - b.windowStart);
+                const order = [...valid].sort((a,b) => a.windowStart - b.windowStart); // Sorts valid events oldest first for the inference logic 
                 const activityList = inferEvents(order).reverse();
                 
                 document.getElementById("feed").innerHTML = activityList.map((activity, index) => {
-                    if (activity.type === 'inferred'){
+                    if (activity.type === 'inferred'){ // If the activity is infered a different style is used to non-inferred events
                         const subCards = activity.events.slice().reverse().map(e => `
                         <div class="feed-item" style="opacity:0.5; border-color:${dotColours[e.label] || '#000000'}70">
                             <span class="feed-time">${new Date(e.windowStart * 1000).toLocaleString()}</span>
